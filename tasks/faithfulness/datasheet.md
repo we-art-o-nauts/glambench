@@ -1,7 +1,7 @@
 # Faithfulness Task Datasheet — OpenGLAM-Bench
 
 ## Purpose
-<what the task measures>
+Judge whether a claim is supported by the record: 'supported' or 'unsupported' (+ error type). 24 items, 12/12 balanced. Includes partial-truth traps (right creator wrong date; right century wrong precision), absence-as-fact items ('the record does not state...'), logical entailments (a range implies its superset), disputed-provenance cases, and rights misstatements.
 
 ## Source
 Synthetic placeholder seed data (CC0). Replace with curated records from partner GLAMs before any public release; track replacements in data/source_info.yaml.

@@ -1,8 +1,7 @@
 """Simple rolling-window rate limiter for API calls.
 
 Default: 15 requests per minute (e.g. PublicAI free-tier chat endpoint).
-Set to 0 to disable. Override per run with --rate-limit or the
-GLAMBENCH_RATE_LIMIT environment variable.
+Set to 0 to disable. Override per run with --rate-limit
 """
 
 from __future__ import annotations

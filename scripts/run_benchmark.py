@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import random
 import sys
 from pathlib import Path
 
@@ -32,13 +33,15 @@ def main():
     parser.add_argument("--model", choices=["dummy", "openai-compatible"], required=True)
     parser.add_argument("--base-url", default=os.environ.get("OPENAI_BASE_URL", "http://localhost:8000/v1"))
     parser.add_argument("--name", default=os.environ.get("OPENAI_MODEL", "openai-compatible"), help="Model name/id for openai-compatible mode (env: OPENAI_MODEL)")
-    parser.add_argument("--api-key-env", default=os.environ.get("OPENAI_API_KEY_ENV", "OPENAI_API_KEY"), help="Environment variable holding the API key (default: OPENAI_API_KEY)")
+    parser.add_argument("--api-key", default=os.environ.get("OPENAI_API_KEY"), help="Environment variable holding the API key (default: OPENAI_API_KEY)")
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--tasks", default=None, help="Comma-separated subset, e.g. reading,linking")
     parser.add_argument("--quiet", action="store_true", help="Suppress per-item progress output")
-    parser.add_argument("--rate-limit", type=int, default=int(os.environ.get("GLAMBENCH_RATE_LIMIT", "15")),
-                        help="Max LLM API requests per minute (0 disables). Env: GLAMBENCH_RATE_LIMIT")
+    parser.add_argument("--seed", type=int, default=None,
+                        help="Seed for the randomized test order. Default: random seed, printed e.g. for reproduction")
+    parser.add_argument("--rate-limit", type=int, default=int(os.environ.get("OPENAI_RATE_LIMIT", "15")),
+                        help="Max LLM API requests per minute (0 disables). Env: OPENAI_RATE_LIMIT")
     args = parser.parse_args()
 
     if args.model == "dummy":
@@ -46,11 +49,13 @@ def main():
     else:
         limiter = RateLimiter(args.rate_limit) if args.rate_limit else None
         if limiter:
-            print(f"Rate limit: {args.rate_limit} requests/minute (GLAMBENCH_RATE_LIMIT to change, 0 to disable)")
-        model = OpenAICompatibleModel(name=args.name, base_url=args.base_url, api_key_env=args.api_key_env, rate_limiter=limiter)
+            print(f"Rate limit: {args.rate_limit} requests/minute")
+        model = OpenAICompatibleModel(name=args.name, base_url=args.base_url, api_key=args.api_key, rate_limiter=limiter)
 
     tasks = [t.strip() for t in args.tasks.split(",")] if args.tasks else None
-    results = run_all(model, tasks=tasks, limit=args.limit, verbose=not args.quiet)
+    seed = args.seed if args.seed is not None else random.SystemRandom().randrange(2**31)
+    print(f"Seed: {seed}")
+    results = run_all(model, tasks=tasks, limit=args.limit, verbose=not args.quiet, seed=seed)
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(results, ensure_ascii=False, indent=2), encoding="utf-8")

@@ -1,7 +1,9 @@
 # Reading Task Datasheet — OpenGLAM-Bench
 
 ## Purpose
-<what the task measures>
+OCR post-correction of historical documents: given raw OCR output (with long-s, ligature, encoding and misread-character errors typical of Fraktur/Kurrent/print), the model must reconstruct the intended historical transcription exactly — no modernising, no translating, nothing added or dropped. Text-proxy stand-in until document images are curated.
+
+Difficulty strata via the `difficulty` field: easy (encoding artifacts), medium, hard (heavy corruption or long documents).
 
 ## Source
 Synthetic placeholder seed data (CC0). Replace with curated records from partner GLAMs before any public release; track replacements in data/source_info.yaml.

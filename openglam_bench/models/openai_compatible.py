@@ -18,13 +18,13 @@ RETRIABLE_HTTP = {408, 409, 425, 429} | set(range(500, 600))
 
 
 class OpenAICompatibleModel:
-    def __init__(self, name: str, base_url: str, api_key_env: str = "OPENAI_API_KEY",
-                 temperature: float = 0.0, timeout: int = 120, max_attempts: int = 3,
+    def __init__(self, name: str, base_url: str, api_key: str,
+                 temperature: float = 0.0, timeout: int = 10, max_attempts: int = 3,
                  user_agent: str = "GLAMbench/0.1 (OpenGLAM-Bench; opendata.ch)",
                  rate_limiter=None):
         self.name = name
         self.base_url = base_url.rstrip("/")
-        self.api_key_env = api_key_env
+        self.api_key = api_key
         self.temperature = temperature
         self.timeout = timeout
         self.max_attempts = max_attempts
@@ -34,7 +34,6 @@ class OpenAICompatibleModel:
     def _request_once(self, payload: dict) -> str:
         if self.rate_limiter is not None:
             self.rate_limiter.wait()  # retries count against the limit too
-        api_key = os.environ.get(self.api_key_env, "")
         req = urllib.request.Request(
             f"{self.base_url}/chat/completions",
             data=json.dumps(payload).encode("utf-8"),
@@ -42,7 +41,7 @@ class OpenAICompatibleModel:
                 "Content-Type": "application/json",
                 # WAFs (e.g. PublicAI's Cloudflare) 403 the default Python-urllib UA.
                 "User-Agent": self.user_agent,
-                **({"Authorization": f"Bearer {api_key}"} if api_key else {}),
+                **({"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}),
             },
             method="POST",
         )

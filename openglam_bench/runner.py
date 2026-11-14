@@ -5,6 +5,7 @@ and writes a per-model JSON result file.
 from __future__ import annotations
 
 import json
+import random
 from pathlib import Path
 
 from .scoring import SCORERS, faithfulness
@@ -26,6 +27,13 @@ def load_test_data(task: str) -> list[dict]:
 
 def build_prompt(task: str, item: dict) -> str:
     if task == "reading":
+        ocr = item.get("ocr_text")
+        if ocr:
+            return (f"The following is raw OCR output of a historical document "
+                    f"(language: {item.get('language', '?')}, script: {item.get('script', '?')}). "
+                    f"Reconstruct the intended historical transcription exactly as written. "
+                    f"Do not translate, do not modernise the spelling, and do not add or remove content.\n\n"
+                    f"OCR output:\n{ocr}")
         return item.get("prompt") or (
             f"Transcribe this historical document exactly as written (language: {item.get('language')}, "
             f"script: {item.get('script')}). Do not modernise spelling. Document image/text reference: "
@@ -54,7 +62,7 @@ def build_prompt(task: str, item: dict) -> str:
 def sample_preview(task: str, item: dict, max_chars: int = 90) -> str:
     """A few words of the sample, for progress output."""
     if task == "reading":
-        text = item.get("gold_text") or item.get("prompt") or ""
+        text = item.get("ocr_text") or item.get("prompt") or ""
     elif task == "describing":
         text = item.get("record", "")
     elif task == "linking":
@@ -76,8 +84,10 @@ def _running(per_item: list[dict]) -> dict[str, float]:
     return {k: round(sum(r["metrics"][k] for r in per_item) / len(per_item), 4) for k in keys}
 
 
-def run_task(model, task: str, limit: int | None = None, verbose: bool = True) -> dict:
+def run_task(model, task: str, limit: int | None = None, verbose: bool = True, seed: int | str | None = None) -> dict:
     items = load_test_data(task)
+    # Randomize sample order each run (before applying --limit). Seed pins it for reproduction.
+    random.Random(f"{seed}:{task}" if seed is not None else None).shuffle(items)
     if limit:
         items = items[:limit]
     scorer = SCORERS[task]
@@ -112,9 +122,12 @@ def run_task(model, task: str, limit: int | None = None, verbose: bool = True) -
             "n_items": len(per_item), "summary": summary, "items": per_item}
 
 
-def run_all(model, tasks: list[str] | None = None, limit: int | None = None, verbose: bool = True) -> dict:
+def run_all(model, tasks: list[str] | None = None, limit: int | None = None, verbose: bool = True,
+            seed: int | str | None = None) -> dict:
     from . import TASK_NAMES
     tasks = tasks or TASK_NAMES
-    results = {task: run_task(model, task, limit, verbose) for task in tasks}
+    results = {task: run_task(model, task, limit, verbose, seed) for task in tasks}
     results["model"] = getattr(model, "name", str(model))
+    if seed is not None:
+        results["seed"] = seed
     return results
