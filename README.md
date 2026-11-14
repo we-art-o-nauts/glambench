@@ -72,6 +72,7 @@ cp .env.template .env
 | `OPENAI_MODEL` | Model id exactly as the endpoint expects | `swiss-ai/Apertus-8B-Instruct-2509` (local vLLM), `gpt-4.1-mini` |
 | `OPENAI_API_KEY` | Key for that endpoint | leave empty for unauthenticated local servers |
 | `OPENAI_API_KEY_ENV` | *(optional)* read the key from a different variable instead | `MY_PROVIDER_KEY` |
+| `GLAMBENCH_RATE_LIMIT` | Max LLM API requests per minute, default `15`; `0` disables (rolling window; retries count too) | `60` |
 
 Works with **any** OpenAI-compatible `/v1/chat/completions` server: self-hosted open-weight models (including **Apertus** served via vLLM/sglang at `localhost:8000/v1`), OpenRouter, OpenAI, or gateway proxies.
 
@@ -83,7 +84,7 @@ python3 scripts/run_benchmark.py --model openai-compatible --output results/my-m
 python3 scripts/run_benchmark.py --model openai-compatible --tasks reading,linking --limit 10 --output results/smoke.json
 ```
 
-`--base-url`, `--name`, `--api-key-env` override the `.env` values; `--tasks` takes a comma-separated subset; `--limit N` runs the first N items per task. Each output JSON contains per-item outputs + metrics and a per-task summary.
+`--base-url`, `--name`, `--api-key-env` override the `.env` values; `--tasks` takes a comma-separated subset; `--limit N` runs the first N items per task; `--rate-limit N` overrides `GLAMBENCH_RATE_LIMIT` (default 15 req/min, `0` to disable). Each output JSON contains per-item outputs + metrics and a per-task summary.
 
 ### 3. Update the leaderboard
 

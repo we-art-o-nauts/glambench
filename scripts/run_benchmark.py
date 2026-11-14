@@ -18,6 +18,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from openglam_bench.dotenv import load_dotenv
+from openglam_bench.ratelimit import RateLimiter
 from openglam_bench.models.dummy import DummyModel
 from openglam_bench.models.openai_compatible import OpenAICompatibleModel
 from openglam_bench.runner import run_all
@@ -36,12 +37,17 @@ def main():
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--tasks", default=None, help="Comma-separated subset, e.g. reading,linking")
     parser.add_argument("--quiet", action="store_true", help="Suppress per-item progress output")
+    parser.add_argument("--rate-limit", type=int, default=int(os.environ.get("GLAMBENCH_RATE_LIMIT", "15")),
+                        help="Max LLM API requests per minute (0 disables). Env: GLAMBENCH_RATE_LIMIT")
     args = parser.parse_args()
 
     if args.model == "dummy":
         model = DummyModel()
     else:
-        model = OpenAICompatibleModel(name=args.name, base_url=args.base_url, api_key_env=args.api_key_env)
+        limiter = RateLimiter(args.rate_limit) if args.rate_limit else None
+        if limiter:
+            print(f"Rate limit: {args.rate_limit} requests/minute (GLAMBENCH_RATE_LIMIT to change, 0 to disable)")
+        model = OpenAICompatibleModel(name=args.name, base_url=args.base_url, api_key_env=args.api_key_env, rate_limiter=limiter)
 
     tasks = [t.strip() for t in args.tasks.split(",")] if args.tasks else None
     results = run_all(model, tasks=tasks, limit=args.limit, verbose=not args.quiet)

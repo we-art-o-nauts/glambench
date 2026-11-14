@@ -20,7 +20,8 @@ RETRIABLE_HTTP = {408, 409, 425, 429} | set(range(500, 600))
 class OpenAICompatibleModel:
     def __init__(self, name: str, base_url: str, api_key_env: str = "OPENAI_API_KEY",
                  temperature: float = 0.0, timeout: int = 120, max_attempts: int = 3,
-                 user_agent: str = "GLAMbench/0.1 (OpenGLAM-Bench; opendata.ch)"):
+                 user_agent: str = "GLAMbench/0.1 (OpenGLAM-Bench; opendata.ch)",
+                 rate_limiter=None):
         self.name = name
         self.base_url = base_url.rstrip("/")
         self.api_key_env = api_key_env
@@ -28,8 +29,11 @@ class OpenAICompatibleModel:
         self.timeout = timeout
         self.max_attempts = max_attempts
         self.user_agent = user_agent
+        self.rate_limiter = rate_limiter
 
     def _request_once(self, payload: dict) -> str:
+        if self.rate_limiter is not None:
+            self.rate_limiter.wait()  # retries count against the limit too
         api_key = os.environ.get(self.api_key_env, "")
         req = urllib.request.Request(
             f"{self.base_url}/chat/completions",
