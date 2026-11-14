@@ -1,0 +1,13 @@
+[project]
+name = "openglam-bench"
+version = "0.1.0"
+description = "A living, open benchmark for AI in cultural heritage collections (GLAM)."
+requires-python = ">=3.10"
+dependencies = []
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["openglam_bench"]

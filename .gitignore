@@ -1,0 +1,16 @@
+# Secrets — never commit
+.env
+.env.*
+!.env.template
+*.egg-info/
+
+# Generated artifacts
+results/
+data/ckan/latest.json
+data/ckan/openglam_datasets_*.json
+data/ckan/recommendations.*
+
+__pycache__/
+*.pyc
+.venv/
+uv.lock
