@@ -51,17 +51,51 @@ def build_prompt(task: str, item: dict) -> str:
     raise ValueError(f"Unknown task: {task}")
 
 
-def run_task(model, task: str, limit: int | None = None) -> dict:
+def sample_preview(task: str, item: dict, max_chars: int = 90) -> str:
+    """A few words of the sample, for progress output."""
+    if task == "reading":
+        text = item.get("gold_text") or item.get("prompt") or ""
+    elif task == "describing":
+        text = item.get("record", "")
+    elif task == "linking":
+        text = f"{item.get('mention', '')} — {item.get('context', '')}"
+    elif task == "translating":
+        text = item.get("source_text", "")
+    elif task == "faithfulness":
+        text = f"claim: {item.get('claim', '')}"
+    else:
+        text = json.dumps(item, ensure_ascii=False)
+    text = " ".join(text.split())
+    return text[:max_chars] + ("…" if len(text) > max_chars else "")
+
+
+def _running(per_item: list[dict]) -> dict[str, float]:
+    if not per_item:
+        return {}
+    keys = per_item[0]["metrics"].keys()
+    return {k: round(sum(r["metrics"][k] for r in per_item) / len(per_item), 4) for k in keys}
+
+
+def run_task(model, task: str, limit: int | None = None, verbose: bool = True) -> dict:
     items = load_test_data(task)
     if limit:
         items = items[:limit]
     scorer = SCORERS[task]
+    total = len(items)
     per_item = []
-    for item in items:
+    if verbose:
+        print(f"\n=== {task} ({total} items) ===", flush=True)
+    for i, item in enumerate(items, 1):
+        if verbose:
+            print(f"[{i}/{total}] {item.get('id', '?')}: {sample_preview(task, item)}", flush=True)
         prompt = build_prompt(task, item)
         output = model.generate(task, prompt)
         metrics = scorer(output, item)
         per_item.append({"id": item.get("id"), "output": output, "metrics": metrics})
+        if verbose:
+            out_preview = " ".join((output or "").split())[:80]
+            print(f"      model: {out_preview}{'…' if output and len(output) > 80 else ''}", flush=True)
+            print(f"      metrics: {metrics} | running mean: {_running(per_item)}", flush=True)
 
     summary: dict[str, float] = {}
     if per_item:
@@ -71,13 +105,16 @@ def run_task(model, task: str, limit: int | None = None) -> dict:
     if task == "faithfulness":
         summary.update(faithfulness.aggregate([r["metrics"] for r in per_item]))
 
+    if verbose:
+        print(f"--- {task} summary: {summary}", flush=True)
+
     return {"task": task, "model": getattr(model, "name", str(model)),
             "n_items": len(per_item), "summary": summary, "items": per_item}
 
 
-def run_all(model, tasks: list[str] | None = None, limit: int | None = None) -> dict:
+def run_all(model, tasks: list[str] | None = None, limit: int | None = None, verbose: bool = True) -> dict:
     from . import TASK_NAMES
     tasks = tasks or TASK_NAMES
-    results = {task: run_task(model, task, limit) for task in tasks}
+    results = {task: run_task(model, task, limit, verbose) for task in tasks}
     results["model"] = getattr(model, "name", str(model))
     return results

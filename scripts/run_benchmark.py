@@ -35,6 +35,7 @@ def main():
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--tasks", default=None, help="Comma-separated subset, e.g. reading,linking")
+    parser.add_argument("--quiet", action="store_true", help="Suppress per-item progress output")
     args = parser.parse_args()
 
     if args.model == "dummy":
@@ -43,7 +44,7 @@ def main():
         model = OpenAICompatibleModel(name=args.name, base_url=args.base_url, api_key_env=args.api_key_env)
 
     tasks = [t.strip() for t in args.tasks.split(",")] if args.tasks else None
-    results = run_all(model, tasks=tasks, limit=args.limit)
+    results = run_all(model, tasks=tasks, limit=args.limit, verbose=not args.quiet)
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(results, ensure_ascii=False, indent=2), encoding="utf-8")
